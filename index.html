@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarGram</title>
+    <script async src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script async src="https://api.kvstore.io/js/public.js?storage_uuid=f59366b9-b84a-48ae-9343-b50a15975986"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+        }
+
+        .container {
+            padding: 16px;
+        }
+
+        h1, h2 {
+            color: var(--tg-theme-accent-text-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid var(--tg-theme-section-separator-color);
+        }
+
+        button {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: var(--tg-theme-link-color);
+        }
+
+        .button-container {
+            margin-top: 16px;
+        }
+
+        .bottom-menu {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--tg-theme-bottom-bar-bg-color);
+            padding: 8px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .bottom-menu button {
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .profile-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .profile-info img {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            margin-right: 16px;
+        }
+
+        .top-ups-list {
+            margin-top: 16px;
+        }
+
+        .top-ups-list li {
+            margin-bottom: 8px;
+        }
+
+        .earn-tasks li {
+            margin-bottom: 16px;
+        }
+
+        .airdrop-info {
+            margin-top: 16px;
+        }
+
+        .custom-alert {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            padding: 8px 16px;
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="alert" class="custom-alert"></div>
+
+    <div class="container" id="app">
+        <div v-if="currentTab === 'rank'">
+            <h1>StarGram Rank</h1>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>User</th>
+                        <th>Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="user in topUsers" :key="user.id">
+                        <td>{{ user.rank }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.balance }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="button-container">
+                <button @click="topUp">Top Up</button>
+            </div>
+        </div>
+
+        <div v-if="currentTab === 'friends'">
+            <h2>Invite Friends</h2>
+            <p>Invite your friends to StarGram and earn rewards!</p>
+            <p>Each invited friend: +1k to your balance</p>
+            <p>Each invited friend with Telegram Premium: +5k to your balance</p>
+            <button @click="inviteFriend">Invite Friend</button>
+        </div>
+
+        <div v-if="currentTab === 'profile'">
+            <h2>Profile</h2>
+            <div class="profile-info">
+                <img :src="user.photo_url" alt="Profile Photo">
+                <div>
+                    <p>Name: {{ user.first_name }} {{ user.last_name }}</p>
+                    <p>Username: {{ user.username }}</p>
+                </div>
+            </div>
+            <h3>Latest Top Ups</h3>
+            <ul class="top-ups-list">
+                <li v-for="topUp in topUps" :key="topUp.id">
+                    {{ topUp.amount }} XTR - {{ topUp.date }}
+                </li>
+            </ul>
+        </div>
+
+        <div v-if="currentTab === 'earn'">
+            <h2>Earn</h2>
+            <ul class="earn-tasks">
+                <li>
+                    <h3>Subscribe to YouTube Channel</h3>
+                    <p>Earn +1k to your balance!</p>
+                    <button @click="completeTask('youtube')">Subscribe</button>
+                </li>
+                <li>
+                    <h3>Join Telegram Channel</h3>
+                    <p>Earn +1k to your balance!</p>
+                    <button @click="completeTask('telegramChannel')">Join</button>
+                </li>
+                <li>
+                    <h3>Join Lobster Coin Bot</h3>
+                    <p>Earn +1k to your balance!</p>
+                    <button @click="completeTask('lobsterCoinBot')">Join</button>
+                </li>
+            </ul>
+        </div>
+
+        <div v-if="currentTab === 'airdrop'">
+            <h2>Airdrop</h2>
+            <div class="airdrop-info">
+                <p>1 balance ≈ 10 tokens after Listing</p>
+                <p>Estimated token price: $0.008</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-menu">
+        <button @click="switchTab('rank')">Rank</button>
+        <button @click="switchTab('friends')">Friends</button>
+        <button @click="switchTab('profile')">Profile</button>
+        <button @click="switchTab('earn')">Earn</button>
+        <button @click="switchTab('airdrop')">Airdrop</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script>
+        const KVSTORE_API_KEY = '9aeab234a181d4fc3fe14d280d339721e15b24c0a303ab325b6546034ffd2537';
+        const TOP_USERS_LIMIT = 100;
+
+        new Vue({
+            el: '#app',
+            data: {
+                currentTab: 'rank',
+                user: {},
+                topUsers: [],
+                topUps: [],
+                balance: 0,
+                referralLink: ''
+            },
+            mounted() {
+                this.initWebApp();
+            },
+            methods: {
+                showAlert(text) {
+                    const alertElement = document.getElementById('alert');
+                    alertElement.style.display = 'flex';
+                    alertElement.innerText = text;
+                    setTimeout(() => {
+                        alertElement.style.display = 'none';
+                    }, 3000);
+                },
+                async initWebApp() {
+                    Telegram.WebApp.ready();
+                    this.user = Telegram.WebApp.initDataUnsafe.user;
+                    await this.loadData();
+                    this.referralLink = `https://t.me/your_bot_username?start=${this.user.id}`;
+                    setInterval(this.updateRank, 5000);
+                },
+                async loadData() {
+                    try {
+                        let userData = await KVStore.getItem(`user_${this.user.id}`);
+                        if (userData) {
+                            this.balance = userData.balance || 0;
+                            this.topUps = userData.topUps || [];
+                        } else {
+                            await KVStore.setItem(`user_${this.user.id}`, { balance: 0, topUps: [] });
+                        }
+                        await this.loadTopUsers();
+                    } catch (error) {
+                        this.showAlert('Error loading data!');
+                    }
+                },
+                async loadTopUsers() {
+                    try {
+                        let topUsersData = await KVStore.list({ prefix: 'user_' });
+                        this.topUsers = Object.entries(topUsersData)
+                            .map(([key, value]) => ({
+                                id: key.replace('user_', ''),
+                                username: value.username || 'Unknown User',
+                                balance: value.balance || 0
+                            }))
+                            .sort((a, b) => b.balance - a.balance)
+                            .slice(0, TOP_USERS_LIMIT)
+                            .map((user, index) => ({ ...user, rank: index + 1 }));
+                    } catch (error) {
+                        this.showAlert('Error loading top users!');
+                    }
+                },
+                async updateRank() {
+                    await this.loadTopUsers();
+                },
+                async topUp() {
+                    try {
+                        let amountXTR = Math.ceil((10000 - this.balance) / 100);
+                        await Telegram.WebApp.openInvoice({
+                            prices: [{ label: `${amountXTR} XTR`, amount: amountXTR * 100 }],
+                            provider_data: {
+                                "": "" // Payment provider token. Pass an empty string for payments in Telegram Stars.
+                            }
+                        });
+
+                        Telegram.WebApp.onEvent('invoiceClosed', async (event) => {
+                            if (event.status === 'paid') {
+                                this.balance += 10000;
+                                await KVStore.setItem(`user_${this.user.id}`, {
+                                    balance: this.balance,
+                                    topUps: [...this.topUps, { amount: amountXTR, date: new Date().toLocaleString() }]
+                                });
+                                await this.updateRank();
+                            }
+                        });
+                    } catch (error) {
+                        this.showAlert('Error during top-up!');
+                    }
+                },
+                inviteFriend() {
+                    // Implementation for inviting friends (link sharing logic)
+                    this.showAlert('Invite your friends!');
+                },
+                async completeTask(taskName) {
+                    try {
+                        this.balance += 1000;
+                        await KVStore.setItem(`user_${this.user.id}`, { balance: this.balance });
+                        await this.updateRank();
+
+                        // Implement actual task completion logic here
+                        if (taskName === 'youtube') {
+                            this.showAlert('Successfully subscribed to Youtube channel!');
+                        } else if (taskName === 'telegramChannel') {
+                            this.showAlert('Successfully joined Telegram Channel!');
+                        } else if (taskName === 'lobsterCoinBot') {
+                            this.showAlert('Successfully joined Lobster Coin Bot!');
+                        }
+
+                    } catch (error) {
+                        this.showAlert('Error completing task!');
+                    }
+                },
+                switchTab(tabName) {
+                    this.currentTab = tabName;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
